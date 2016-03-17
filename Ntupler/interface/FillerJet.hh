@@ -5,24 +5,34 @@
 #include "BaconProd/Utils/interface/JetPUIDMVACalculator.hh"
 #include "BaconProd/Utils/interface/ShowerDeco.hh"
 #include "BaconAna/DataFormats/interface/TAddJet.hh"
+#include "DataFormats/BTauReco/interface/BaseTagInfo.h"
+#include "DataFormats/BTauReco/interface/SecondaryVertexTagInfo.h"
 #include "DataFormats/JetReco/interface/PFJet.h"
 #include "DataFormats/JetReco/interface/BasicJet.h"
 #include "DataFormats/JetReco/interface/JetCollection.h"
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 #include "DataFormats/JetReco/interface/GenJetCollection.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
+#include "RecoBTag/SecondaryVertex/interface/TrackSelector.h"
+#include "RecoBTag/SecondaryVertex/interface/TrackKinematics.h"
+#include "RecoBTag/SecondaryVertex/interface/V0Filter.h"
+#include "RecoBTau/JetTagComputer/interface/JetTagComputer.h"
 #include "SimDataFormats/JetMatching/interface/JetFlavourInfoMatching.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "fastjet/PseudoJet.hh"
+#include "fastjet/contrib/Njettiness.hh"
+
 #include "TRandom2.h"
 #include <vector>
 #include <string>
 
-// forward class declarations
-#include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "DataFormats/VertexReco/interface/VertexFwd.h"
 class TClonesArray;
 class FactorizedJetCorrector;
 class JetCorrectionUncertainty;
@@ -69,6 +79,13 @@ namespace baconhep
       const reco::BasicJet* match(const pat::Jet *iJet,   const reco::BasicJetCollection *jets);
       const reco::GenJet*   match(const reco::PFJet *jet, const reco::GenJetCollection *jets);
       const reco::GenJet*   match(const pat::Jet *iJet,   const reco::GenJetCollection *jets);
+
+      void setTracksPVBase(const reco::TrackRef & trackRef, const reco::VertexRef & vertexRef, float & PVweight) const;
+      void setTracksPV(const reco::CandidatePtr & trackRef, const reco::VertexRef & vertexRef, float & PVweight) const;
+
+      void recalcNsubjettiness(const reco::JetBaseRef &jet, float & tau1, float & tau2, float & tau3, float & tau4, std::vector<fastjet::PseudoJet> & currentAxes);
+      void vertexKinematicsAndChange(const reco::VertexCompositePtrCandidate & vertex, reco::TrackKinematics & vertexKinematics);
+      void etaRelToTauAxis(const reco::VertexCompositePtrCandidate & vertex, const fastjet::PseudoJet & tauAxis, std::vector<float> & tau_trackEtaRel);
       
       // Jet cuts
       double fMinPt;
@@ -91,6 +108,8 @@ namespace baconhep
       std::string fCSVbtagSubJetName;
       std::string fCSVDoubleBtagName;
       std::string fJettinessName;
+      std::string fIPTagInfos; 
+      std::string fSVTagInfos;
       std::string fQGLikelihood;
       std::string fQGLikelihoodSubJets;
       std::string fTopTaggerName;
@@ -123,6 +142,8 @@ namespace baconhep
     edm::EDGetTokenT<reco::BasicJetCollection> fTokSoftDropJetName;
     edm::EDGetTokenT<reco::JetTagCollection>   fTokCSVbtagSubJetName;
     edm::EDGetTokenT<reco::JetTagCollection>   fTokCSVDoubleBtagName;
+    edm::EDGetTokenT<reco::CandIPTagInfoCollection>              fTokIPTagInfos;
+    edm::EDGetTokenT<reco::CandSecondaryVertexTagInfoCollection> fTokSVTagInfos;
     edm::EDGetTokenT<edm::ValueMap<float> >    fTokQGLikelihood     ;
     edm::EDGetTokenT<edm::ValueMap<float> >    fTokQGLAxis2         ;
     edm::EDGetTokenT<edm::ValueMap<float> >    fTokQGLPtD           ;
@@ -136,6 +157,20 @@ namespace baconhep
     edm::EDGetTokenT<reco::BasicJetCollection> fTokCMSTTJetProduct ;
     edm::EDGetTokenT<reco::PFJetCollection>    fTokCMSTTSubJetProduct;
     edm::EDGetTokenT<double>                   fTokRhoTag;
+
+    const double fbeta;
+    const double fR0;
+
+    // N-subjettiness calculator                                                                                                                                                                                                
+    fastjet::contrib::Njettiness fnjettiness;
+
+    // trackPairV0Filter                                                                                                                                                                                                        
+    reco::V0Filter ftrackPairV0Filter;
+    reco::TrackSelector ftrackSelector;
+    // Maxsvdeltartojet                                                                                                                                                                                                         
+    const double fmaxSVDeltaRToJet;
+    // trackBuilder                                                                                                                                                                                                             
+    const TransientTrackBuilder *theTTBuilder;
   };
 }
 #endif

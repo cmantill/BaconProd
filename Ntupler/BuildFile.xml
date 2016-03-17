@@ -1,16 +1,20 @@
 <use name="BaconAna/DataFormats"/>
 <use name="BaconProd/Utils"/>
-<use name="TrackingTools/IPTools"/>
-<use name="FWCore/Framework"/>
 <use name="CondFormats/JetMETObjects"/>
 <use name="DataFormats/ParticleFlowCandidate"/>
 <use name="DataFormats/MuonReco"/>
 <use name="DataFormats/TauReco"/>
 <use name="DataFormats/JetReco"/>
+<use name="DataFormats/BTauReco"/>
 <use name="DataFormats/HepMCCandidate"/>
 <use name="DataFormats/PatCandidates"/>
+<use name="FWCore/Framework"/>
+<use name="RecoBTag/SecondaryVertex"/>
+<use name="RecoBTau/JetTagComputer"/>
+<use name="TrackingTools/IPTools"/>
+<use name="TrackingTools/Records"/>
+<use name="TrackingTools/TransientTrack"/>
 <use name="fastjet"/>
-<use name="fastjet-contrib"/>
 <flags CXXFLAGS="-g -Wall"/>
 <export>
   <lib name="1"/>
