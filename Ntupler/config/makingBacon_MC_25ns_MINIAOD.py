@@ -12,9 +12,9 @@ cmssw_base = os.environ['CMSSW_BASE']
 from BaconProd.Ntupler.myJecFromDB_cff    import setupJEC
 setupJEC(process,is_data_flag)
 if is_data_flag:
-  process.jec.connect = cms.string('sqlite:///src/BaconProd/Utils/data/Fall15_25nsV2_DATA.db')
+  process.jec.connect = cms.string('sqlite:///../../Utils/data/Fall15_25nsV2_DATA.db')
 else:
-  process.jec.connect = cms.string('sqlite:///src/BaconProd/Utils/data/Fall15_25nsV2_MC.db')
+  process.jec.connect = cms.string('sqlite:///../../Utils/data/Fall15_25nsV2_MC.db')
 
 process.load('BaconProd/Ntupler/myQGLFromDB_cff')
 #--------------------------------------------------------------------------------
@@ -179,9 +179,16 @@ ca15PUPPIUnc = ak4PUPPIUnc
 #--------------------------------------------------------------------------------
 # input settings
 #================================================================================
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+#process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
+#process.source = cms.Source("PoolSource",
+#                            fileNames = cms.untracked.vstring('/store/mc/RunIIFall15MiniAODv1/GluGlu_HToInvisible_M125_13TeV_powheg_pythia8/MINIAODSIM/PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/00000/3C66095A-74AD-E511-9012-44A842CFD5CB.root')
+#)
+#process.source = cms.Source("PoolSource",
+#                            fileNames = cms.untracked.vstring('/store/mc/RunIIFall15MiniAODv1/ZprimeToTT_M-1000_W-10_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/70000/2CC3EA14-DBA3-E511-B99E-0CC47A1DF818.root')
+#)
 process.source = cms.Source("PoolSource",
-                            fileNames = cms.untracked.vstring('/store/mc/RunIIFall15MiniAODv1/GluGlu_HToInvisible_M125_13TeV_powheg_pythia8/MINIAODSIM/PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/00000/3C66095A-74AD-E511-9012-44A842CFD5CB.root')
+                            fileNames = cms.untracked.vstring('/store/mc/RunIIFall15MiniAODv1/QCD_HT700to1000_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/80000/D2B4C95D-97CD-E511-AC87-0025905C975E.root')
 )
 process.source.inputCommands = cms.untracked.vstring("keep *",
                                                      "drop *_MEtoEDMConverter_*_*")

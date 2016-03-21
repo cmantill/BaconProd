@@ -110,6 +110,8 @@ namespace baconhep
       std::string fJettinessName;
       std::string fIPTagInfos; 
       std::string fSVTagInfos;
+    // std::string fsoftPFMuonTagInfos;
+    // std::string fsoftPFElectronTagInfos;
       std::string fQGLikelihood;
       std::string fQGLikelihoodSubJets;
       std::string fTopTaggerName;
@@ -144,6 +146,8 @@ namespace baconhep
     edm::EDGetTokenT<reco::JetTagCollection>   fTokCSVDoubleBtagName;
     edm::EDGetTokenT<reco::CandIPTagInfoCollection>              fTokIPTagInfos;
     edm::EDGetTokenT<reco::CandSecondaryVertexTagInfoCollection> fTokSVTagInfos;
+    edm::EDGetTokenT<reco::CandSoftLeptonTagInfoCollection>      fToksoftPFMuonTagInfos;
+    edm::EDGetTokenT<reco::CandSoftLeptonTagInfoCollection>      fToksoftPFElectronTagInfos;
     edm::EDGetTokenT<edm::ValueMap<float> >    fTokQGLikelihood     ;
     edm::EDGetTokenT<edm::ValueMap<float> >    fTokQGLAxis2         ;
     edm::EDGetTokenT<edm::ValueMap<float> >    fTokQGLPtD           ;
@@ -170,7 +174,7 @@ namespace baconhep
     // Maxsvdeltartojet                                                                                                                                                                                                         
     const double fmaxSVDeltaRToJet;
     // trackBuilder                                                                                                                                                                                                             
-    const TransientTrackBuilder *theTTBuilder;
+    const TransientTrackBuilder *transientTrackBuilder;
   };
 }
 #endif
