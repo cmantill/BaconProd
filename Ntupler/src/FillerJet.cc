@@ -987,8 +987,8 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
       float jet_NTracks = 0;
 
       std::vector<float> IP3Ds, IP3Ds_1, IP3Ds1, IP3Ds1_1, IP3Ds2, IP3Ds2_1, IP3Ds3, IP3Ds3_1, etaRels;
-      int contTrk=0;
-
+      int contTrk=0; int contTrk1=0; int contTrk2=0; int contTrk3=0;
+						       
       for  (unsigned int iTrk=0; iTrk < selectedTracks.size(); ++iTrk) {
 	const reco::CandidatePtr ptrackRef = selectedTracks[iTrk];
 	const reco::Track & ptrack = *(reco::btag::toTrack(selectedTracks[iTrk]));
@@ -1075,7 +1075,7 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
 
 	if(!isfromV0 && Track_decayLengthTau<10. && Track_distTauAxis <0.1) {
           IP3Ds1.push_back( Track_IPsig <-50. ? -50. : Track_IPsig);
-          contTrk++;
+          contTrk1++;
           for (size_t i=0; i<currentAxes.size(); ++i){
             if (reco::deltaR2(ptrack,currentAxes[i]) == reco::deltaR2(ptrack,closestTauAxisToTrack)) {
               IP3Ds1_1.push_back(Track_IPsig <-50. ? -50. : Track_IPsig);
@@ -1087,7 +1087,7 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
 
 	if(!isfromV0 && Track_decayLengthTau<1. && Track_distTauAxis <0.05) {
           IP3Ds2.push_back( Track_IPsig <-50. ? -50. : Track_IPsig);
-          contTrk++;
+          contTrk2++;
           for (size_t i=0; i<currentAxes.size(); ++i){
             if (reco::deltaR2(ptrack,currentAxes[i]) == reco::deltaR2(ptrack,closestTauAxisToTrack)) {
               IP3Ds2_1.push_back(Track_IPsig <-50. ? -50. : Track_IPsig);
@@ -1099,7 +1099,7 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
 
 	if(!isfromV0 && Track_decayLengthTau<7. && Track_distTauAxis <0.07) {
           IP3Ds3.push_back( Track_IPsig <-50. ? -50. : Track_IPsig);
-          contTrk++;
+          contTrk3++;
           for (size_t i=0; i<currentAxes.size(); ++i){
             if (reco::deltaR2(ptrack,currentAxes[i]) == reco::deltaR2(ptrack,closestTauAxisToTrack)) {
               IP3Ds3_1.push_back(Track_IPsig <-50. ? -50. : Track_IPsig);
@@ -1196,7 +1196,7 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
       std::sort( IP3Ds1.begin(),IP3Ds1.end(),std::greater<float>() );
       std::sort( IP3Ds1_1.begin(),IP3Ds1_1.end(),std::greater<float>() );
       num_1 = IP3Ds1_1.size();
-      switch(contTrk){
+      switch(contTrk1){
       case 0:
         trackSip3dSig_0 = dummyTrack;
         trackSip3dSig_1 = dummyTrack;
@@ -1250,7 +1250,7 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
       std::sort( IP3Ds2.begin(),IP3Ds2.end(),std::greater<float>() );
       std::sort( IP3Ds2_1.begin(),IP3Ds2_1.end(),std::greater<float>() );
       num_1 = IP3Ds2_1.size();
-      switch(contTrk){
+      switch(contTrk2){
       case 0:
         trackSip3dSig_0 = dummyTrack;
         trackSip3dSig_1 = dummyTrack;
@@ -1304,7 +1304,7 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
       std::sort( IP3Ds3.begin(),IP3Ds3.end(),std::greater<float>() );
       std::sort( IP3Ds3_1.begin(),IP3Ds3_1.end(),std::greater<float>() );
       num_1 = IP3Ds3_1.size();
-      switch(contTrk){
+      switch(contTrk3){
       case 0:
         trackSip3dSig_0 = dummyTrack;
         trackSip3dSig_1 = dummyTrack;
