@@ -25,6 +25,7 @@
 #include "DataFormats/JetReco/interface/TrackJetCollection.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+//#include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 
 #include "CondFormats/JetMETObjects/interface/JetCorrectorParameters.h"
@@ -74,6 +75,8 @@ bool compAxesSV(tauAxes tauAxis1, tauAxes tauAxis2) {
 //--------------------------------------------------------------------------------------------------
 FillerJet::FillerJet(const edm::ParameterSet &iConfig, const bool useAOD,edm::ConsumesCollector && iC):
   fMinPt                 (iConfig.getUntrackedParameter<double>("minPt",20)),
+  //fMuonName              (iConfig.getUntrackedParameter<std::string>("edmName","muons")),
+  //fPFCandName            (iConfig.getUntrackedParameter<std::string>("edmPFCandName","particleFlow")),
   fUseGen                (iConfig.getUntrackedParameter<bool>("doGenJet",true)),
   fApplyJEC              (iConfig.getUntrackedParameter<bool>("applyJEC",true)),
   fPVName                (iConfig.getUntrackedParameter<std::string>("edmPVName","offlinePrimaryVertices")),
@@ -85,14 +88,17 @@ FillerJet::FillerJet(const edm::ParameterSet &iConfig, const bool useAOD,edm::Co
   fTrimmedJetName        (iConfig.getUntrackedParameter<std::string>("trimmedJetName","AK4caPFJetsTrimmedCHS")),
   fSoftDropJetName       (iConfig.getUntrackedParameter<std::string>("softdropJetName","AK4caPFJetsSoftDropCHS")),
   fSubJetName            (iConfig.getUntrackedParameter<std::string>("subJetName","AK4caPFJetsTrimmedCHS__SubJets")),
+  fCVLctagName           (iConfig.getUntrackedParameter<std::string>("cvlcTagName","AK4PFCombinedCvsLJetTagsCHS")),
+  fCVBctagName           (iConfig.getUntrackedParameter<std::string>("cvbcTagName","AK4PFCombinedCvsBJetTagsCHS")),
+  fMVAbtagName           (iConfig.getUntrackedParameter<std::string>("mvaBTagName","AK4PFCombinedMVAV2BJetTagsCHS")),
   fCSVbtagName           (iConfig.getUntrackedParameter<std::string>("csvBTagName","combinedInclusiveSecondaryVertexV2BJetTags")),
   fCSVbtagSubJetName     (iConfig.getUntrackedParameter<std::string>("csvBTagSubJetName","AK4CombinedInclusiveSecondaryVertexV2BJetTagsSJCHS")),
   fCSVDoubleBtagName     (iConfig.getUntrackedParameter<std::string>("csvDoubleBTagName","AK4PFBoostedDoubleSecondaryVertexBJetTagsCHS")),
   fJettinessName         (iConfig.getUntrackedParameter<std::string>("jettiness","AK4NjettinessCHS")),
   fIPTagInfos            (iConfig.getUntrackedParameter<std::string>("ipTagInfos","AK4ImpactParameterTagInfosCHS")),
   fSVTagInfos            (iConfig.getUntrackedParameter<std::string>("svTagInfos","AK4InclusiveSecondaryVertexFinderTagInfosCHS")),
-  //fsoftPFMuonTagInfos    (iConfig.getUntrackedParameter<std::string>("softPFMuonTagInfos","AK4softPFMuonsTagInfosCHS")),
-  //fsoftPFElectronTagInfos(iConfig.getUntrackedParameter<std::string>("softPFElectronTagInfos","AK4softPFElectronsTagInfosCHS")),
+  fsoftPFMuonTagInfos    (iConfig.getUntrackedParameter<std::string>("softPFMuonTagInfos","AK4PFSoftPFMuonsTagInfosCHS")),
+  fsoftPFElectronTagInfos(iConfig.getUntrackedParameter<std::string>("softPFElectronTagInfos","AK4PFSoftPFElectronsTagInfosCHS")),
   fQGLikelihood          (iConfig.getUntrackedParameter<std::string>("qgLikelihood","QGLikelihood")),
   fQGLikelihoodSubJets   (iConfig.getUntrackedParameter<std::string>("qgLikelihoodSubjet","QGLikelihood")),
   fTopTaggerName         (iConfig.getUntrackedParameter<std::string>("topTaggerName","")),
@@ -132,10 +138,16 @@ FillerJet::FillerJet(const edm::ParameterSet &iConfig, const bool useAOD,edm::Co
   fTokRhoTag        = iC.consumes<double>               (fRhoName);
   if(fUseAOD)  fTokJetName       = iC.consumes<reco::PFJetCollection>(fJetName);
   if(!fUseAOD) fTokPatJetName    = iC.consumes<pat::JetCollection>   (fJetName);
+  //if(fUseAOD)  fTokMuonName      = iC.consumes<reco::MuonCollection>       (fMuonName);
+  //if(!fUseAOD) fTokPatMuonName   = iC.consumes<pat::MuonCollection>        (fMuonName);
+  //fTokPFCandName     = iC.consumes<reco::PFCandidateCollection>(fPFCandName);
   fTokGenJetName    = iC.consumes<reco::GenJetCollection>(fGenJetName);
   fTokJetFlavorName = iC.consumes<reco::JetFlavourInfoMatchingCollection>(fJetFlavorName);
   fTokPVName        = iC.consumes<reco::VertexCollection>(fPVName);
   fTokCSVbtagName   = iC.consumes<reco::JetTagCollection>(fCSVbtagName);
+  fTokMVAbtagName   = iC.consumes<reco::JetTagCollection>(fMVAbtagName);
+  fTokCVBctagName   = iC.consumes<reco::JetTagCollection>(fCVBctagName);
+  fTokCVLctagName   = iC.consumes<reco::JetTagCollection>(fCVLctagName);
   edm::InputTag lQGLikelihood(fQGLikelihood,"qgLikelihood");
   edm::InputTag lQGLAxis2    (fQGLikelihood,"axis2");
   edm::InputTag lQGLPtD      (fQGLikelihood,"ptD");
@@ -152,8 +164,8 @@ FillerJet::FillerJet(const edm::ParameterSet &iConfig, const bool useAOD,edm::Co
     fTokCSVDoubleBtagName      = iC.consumes<reco::JetTagCollection>                    (fCSVDoubleBtagName);
     fTokIPTagInfos             = iC.consumes<reco::CandIPTagInfoCollection>             (fIPTagInfos);
     fTokSVTagInfos             = iC.consumes<reco::CandSecondaryVertexTagInfoCollection>(fSVTagInfos);
-    //fToksoftPFMuonTagInfos     = iC.consumes<reco::CandSoftLeptonTagInfoCollection>     (fsoftPFMuonTagInfos);
-    //fToksoftPFElectronTagInfos = iC.consumes<reco::CandSoftLeptonTagInfoCollection>     (fsoftPFElectronTagInfos);
+    fToksoftPFMuonTagInfos     = iC.consumes<reco::CandSoftLeptonTagInfoCollection>     (fsoftPFMuonTagInfos);
+    fToksoftPFElectronTagInfos = iC.consumes<reco::CandSoftLeptonTagInfoCollection>     (fsoftPFElectronTagInfos);
     edm::InputTag lTau1(fJettinessName,"tau1");
     edm::InputTag lTau2(fJettinessName,"tau2");
     edm::InputTag lTau3(fJettinessName,"tau3");
@@ -227,7 +239,7 @@ void FillerJet::fill(TClonesArray *array, TClonesArray *iExtraArray,
   iEvent.getByToken(fTokJetName,hJetProduct);
   assert(hJetProduct.isValid());
   const reco::PFJetCollection *jetCol = hJetProduct.product();
-  
+
   // Get gen jet collection
   edm::Handle<reco::GenJetCollection> hGenJetProduct;
   const reco::GenJetCollection *genJetCol = 0;
@@ -236,7 +248,6 @@ void FillerJet::fill(TClonesArray *array, TClonesArray *iExtraArray,
     assert(hGenJetProduct.isValid());
     genJetCol = hGenJetProduct.product();
   }
-
   // Get Jet Flavor Match
   edm::Handle<reco::JetFlavourInfoMatchingCollection> hJetFlavourMatch;
   if(fUseGen) {
@@ -260,6 +271,21 @@ void FillerJet::fill(TClonesArray *array, TClonesArray *iExtraArray,
   iEvent.getByToken(fTokCSVbtagName, hCSVbtags);
   assert(hCSVbtags.isValid());
 
+  // Get b-jet MVA tagger
+  edm::Handle<reco::JetTagCollection> hMVAbtags;
+  iEvent.getByToken(fTokMVAbtagName, hMVAbtags);
+  assert(hMVAbtags.isValid());
+
+  // Get c-jet vs B tagger
+  edm::Handle<reco::JetTagCollection> hCVBctags;
+  iEvent.getByToken(fTokCVBctagName, hCVBctags);
+  assert(hCVBctags.isValid());
+
+  // Get c-jet vs Light tagger
+  edm::Handle<reco::JetTagCollection> hCVLctags;
+  iEvent.getByToken(fTokCVLctagName, hCVLctags);
+  assert(hCVLctags.isValid());
+
   //Get Quark Gluon Likelihood
   edm::Handle<edm::ValueMap<float> > hQGLikelihood; 
   iEvent.getByToken(fTokQGLikelihood,hQGLikelihood); 
@@ -281,15 +307,20 @@ void FillerJet::fill(TClonesArray *array, TClonesArray *iExtraArray,
   edm::ESHandle<TransientTrackBuilder> hTransientTrackBuilder;
   iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder",hTransientTrackBuilder);
   transientTrackBuilder = hTransientTrackBuilder.product();
-                                                                                                                                                                                                 
-  //edm::ESHandle<TransientTrackBuilder> trackBuilder;
-  //iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder",trackBuilder);
-  //theTTBuilder = trackBuilder.product();
 
-  // Muon handler
-  //edm::Handle<edm::View<reco::Muon> > hmuonsHandle;
-  //iEvent.getByToken(fTokmuonCollectionName_,muonsHandle);
-  //muons = *muonsHandle;
+  /*
+  // Get muon collection                                                                                     
+  edm::Handle<Reco::MuonCollection> hMuonProduct;
+  iEvent.getByToken(fTokMuonName,hMuonProduct);
+  assert(hMuonProduct.isValid());
+  const reco::MuonCollection *muonCol = hMuonProduct.product();
+
+  // Get PF-candidates collection
+  edm::Handle<reco::PFCandidateCollection> hPFCandProduct;
+  iEvent.getByToken(fTokPFCandName,hPFCandProduct);
+  assert(hPFCandProduct.isValid());
+  const reco::PFCandidateCollection *pfCandCol = hPFCandProduct.product();
+  */
 
   TClonesArray &rArray      = *array;
   TClonesArray &rExtraArray = *iExtraArray;
@@ -321,7 +352,7 @@ void FillerJet::fill(TClonesArray *array, TClonesArray *iExtraArray,
     const int index = rArray.GetEntries();
     new(rArray[index]) baconhep::TJet();
     baconhep::TJet *pJet = (baconhep::TJet*)rArray[index];
- 
+
     //
     // Kinematics
     //==============================    
@@ -343,13 +374,16 @@ void FillerJet::fill(TClonesArray *array, TClonesArray *iExtraArray,
     //==============================
     reco::PFJetRef jetRef(hJetProduct, itJet - jetCol->begin());
     reco::JetBaseRef jetBaseRef(jetRef);
+  
     pJet->csv  = (*(hCSVbtags.product()))[jetBaseRef];
-
+    pJet->bmva = (*(hMVAbtags.product()))[jetBaseRef];
+    pJet->cvb  = (*(hCVBctags.product()))[jetBaseRef];
+    pJet->cvl  = (*(hCVLctags.product()))[jetBaseRef];
+    
     pJet->qgid  = (*(hQGLikelihood.product()))[jetBaseRef];
     pJet->axis2 = (*(hQGLaxis2.product()))[jetBaseRef];
     pJet->ptD   = (*(hQGLptD.product()))[jetBaseRef];
     pJet->mult  = (*(hQGLmult.product()))[jetBaseRef];
-
     pJet->q = JetTools::jetCharge(*itJet);
     
     pJet->beta     = JetTools::beta(*itJet, pv);
@@ -492,8 +526,7 @@ void FillerJet::fill(TClonesArray *array, TClonesArray *iExtraArray,
       fJetCorr->setJetA(itJet->jetArea());
       fJetCorr->setJetEMF(-99.0);
       jetcorr = fJetCorr->getCorrection();
-    }
-
+    }	
     // jet pT cut (BOTH raw AND corrected pT must exceed threshold)
     if(ptRaw*jetcorr < fMinPt || ptRaw < fMinPt) continue;
     fJetUnc->setJetPt ( ptRaw  );
@@ -527,7 +560,11 @@ void FillerJet::fill(TClonesArray *array, TClonesArray *iExtraArray,
     //
     // Identification
     //==============================
-    pJet->csv = itJet->bDiscriminator(fCSVbtagName);
+    pJet->csv  = itJet->bDiscriminator(fCSVbtagName);
+    pJet->bmva = itJet->bDiscriminator(fMVAbtagName);
+    pJet->cvb  = itJet->bDiscriminator(fCVBctagName);
+    pJet->cvl  = itJet->bDiscriminator(fCVLctagName);
+
     if(fQGLikelihood.size() > 0) { 
       pJet->qgid  = (*hQGLikelihood)[jetBaseRef];
       pJet->axis2 = (*hQGLaxis2)[jetBaseRef];
@@ -666,7 +703,6 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
   assert(hSVTagInfo.isValid());
   const reco::CandSecondaryVertexTagInfoCollection & svTagInfoCollection = *(hSVTagInfo.product());
 
-  /*
   // Get Soft Lepton tag infos
   edm::Handle<reco::CandSoftLeptonTagInfoCollection> hsoftPFMuonTagInfo;
   iEvent.getByToken(fToksoftPFMuonTagInfos,hsoftPFMuonTagInfo);
@@ -677,7 +713,6 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
   iEvent.getByToken(fToksoftPFElectronTagInfos, hsoftPFElectronTagInfo);
   assert(hsoftPFElectronTagInfo.isValid());
   const reco::CandSoftLeptonTagInfoCollection & softPFElectronTagInfoCollection = *(hsoftPFElectronTagInfo.product());
-  */
 
   pAddJet->pullAngle = JetTools::jetPullAngle(itJet,hSubJetProduct,fConeSize);
   pAddJet->tau1 = (*(hTau1.product()))[jetBaseRef];
@@ -951,7 +986,7 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
       float tau1_trackSip3dSig_0, tau1_trackSip3dSig_1;
       float jet_NTracks = 0;
 
-      std::vector<float> IP3Ds, IP3Ds_1, etaRels;
+      std::vector<float> IP3Ds, IP3Ds_1, IP3Ds1, IP3Ds1_1, IP3Ds2, IP3Ds2_1, IP3Ds3, IP3Ds3_1, etaRels;
       int contTrk=0;
 
       for  (unsigned int iTrk=0; iTrk < selectedTracks.size(); ++iTrk) {
@@ -1037,6 +1072,42 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
 	      continue;
 	  }
 	}
+
+	if(!isfromV0 && Track_decayLengthTau<10. && Track_distTauAxis <0.1) {
+          IP3Ds1.push_back( Track_IPsig <-50. ? -50. : Track_IPsig);
+          contTrk++;
+          for (size_t i=0; i<currentAxes.size(); ++i){
+            if (reco::deltaR2(ptrack,currentAxes[i]) == reco::deltaR2(ptrack,closestTauAxisToTrack)) {
+              IP3Ds1_1.push_back(Track_IPsig <-50. ? -50. : Track_IPsig);
+            }
+            else
+              continue;
+          }
+	}
+
+	if(!isfromV0 && Track_decayLengthTau<1. && Track_distTauAxis <0.05) {
+          IP3Ds2.push_back( Track_IPsig <-50. ? -50. : Track_IPsig);
+          contTrk++;
+          for (size_t i=0; i<currentAxes.size(); ++i){
+            if (reco::deltaR2(ptrack,currentAxes[i]) == reco::deltaR2(ptrack,closestTauAxisToTrack)) {
+              IP3Ds2_1.push_back(Track_IPsig <-50. ? -50. : Track_IPsig);
+            }
+            else
+              continue;
+          }
+	}
+
+	if(!isfromV0 && Track_decayLengthTau<7. && Track_distTauAxis <0.07) {
+          IP3Ds3.push_back( Track_IPsig <-50. ? -50. : Track_IPsig);
+          contTrk++;
+          for (size_t i=0; i<currentAxes.size(); ++i){
+            if (reco::deltaR2(ptrack,currentAxes[i]) == reco::deltaR2(ptrack,closestTauAxisToTrack)) {
+              IP3Ds3_1.push_back(Track_IPsig <-50. ? -50. : Track_IPsig);
+            }
+            else
+              continue;
+          }
+	}
       } // end loop on selectedTracks
       pAddJet->nTracks = jet_NTracks;
 
@@ -1119,9 +1190,157 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
       pAddJet->trackSip3dSig_2  = trackSip3dSig_2;
       pAddJet->trackSip3dSig_1  = trackSip3dSig_1;
       pAddJet->trackSip3dSig_0  = trackSip3dSig_0;
-
       pAddJet->tau1_trackSip3dSig_0  = tau1_trackSip3dSig_0;
       pAddJet->tau1_trackSip3dSig_1  = tau1_trackSip3dSig_1;
+
+      std::sort( IP3Ds1.begin(),IP3Ds1.end(),std::greater<float>() );
+      std::sort( IP3Ds1_1.begin(),IP3Ds1_1.end(),std::greater<float>() );
+      num_1 = IP3Ds1_1.size();
+      switch(contTrk){
+      case 0:
+        trackSip3dSig_0 = dummyTrack;
+        trackSip3dSig_1 = dummyTrack;
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 1:
+        trackSip3dSig_0 = IP3Ds1.at(0);
+        trackSip3dSig_1 = dummyTrack;
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 2:
+        trackSip3dSig_0 = IP3Ds1.at(0);
+        trackSip3dSig_1 = IP3Ds1.at(1);
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 3:
+        trackSip3dSig_0 = IP3Ds1.at(0);
+        trackSip3dSig_1 = IP3Ds1.at(1);
+        trackSip3dSig_2 = IP3Ds1.at(2);
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      default:
+        trackSip3dSig_0 = IP3Ds1.at(0);
+        trackSip3dSig_1 = IP3Ds1.at(1);
+        trackSip3dSig_2 = IP3Ds1.at(2);
+        trackSip3dSig_3 = IP3Ds1.at(3);
+      }
+      switch(num_1){
+      case 0:
+        tau1_trackSip3dSig_0 = dummyTrack;
+        tau1_trackSip3dSig_1 = dummyTrack;
+        break;
+      case 1:
+        tau1_trackSip3dSig_0 = IP3Ds1_1.at(0);
+        tau1_trackSip3dSig_1 = dummyTrack;
+        break;
+      default:
+        tau1_trackSip3dSig_0 = IP3Ds1_1.at(0);
+        tau1_trackSip3dSig_1 = IP3Ds1_1.at(1);
+      }
+      pAddJet->trackSip3dSig_3_1  = trackSip3dSig_3;
+      pAddJet->trackSip3dSig_2_1  = trackSip3dSig_2;
+      pAddJet->trackSip3dSig_1_1  = trackSip3dSig_1;
+      pAddJet->trackSip3dSig_0_1  = trackSip3dSig_0;
+      pAddJet->tau1_trackSip3dSig_0_1  = tau1_trackSip3dSig_0;
+      pAddJet->tau1_trackSip3dSig_1_1  = tau1_trackSip3dSig_1;
+
+      std::sort( IP3Ds2.begin(),IP3Ds2.end(),std::greater<float>() );
+      std::sort( IP3Ds2_1.begin(),IP3Ds2_1.end(),std::greater<float>() );
+      num_1 = IP3Ds2_1.size();
+      switch(contTrk){
+      case 0:
+        trackSip3dSig_0 = dummyTrack;
+        trackSip3dSig_1 = dummyTrack;
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 1:
+        trackSip3dSig_0 = IP3Ds2.at(0);
+        trackSip3dSig_1 = dummyTrack;
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 2:
+        trackSip3dSig_0 = IP3Ds2.at(0);
+        trackSip3dSig_1 = IP3Ds2.at(1);
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 3:
+	trackSip3dSig_0 = IP3Ds2.at(0);
+        trackSip3dSig_1 = IP3Ds2.at(1);
+        trackSip3dSig_2 = IP3Ds2.at(2);
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      default:
+        trackSip3dSig_0 = IP3Ds2.at(0);
+        trackSip3dSig_1 = IP3Ds2.at(1);
+        trackSip3dSig_2 = IP3Ds2.at(2);
+        trackSip3dSig_3 = IP3Ds2.at(3);
+      }
+      switch(num_1){
+      case 0:
+        tau1_trackSip3dSig_0 = dummyTrack;
+        tau1_trackSip3dSig_1 = dummyTrack;
+        break;
+      case 1:
+        tau1_trackSip3dSig_0 = IP3Ds2_1.at(0);
+        tau1_trackSip3dSig_1 = dummyTrack;
+        break;
+      default:
+        tau1_trackSip3dSig_0 = IP3Ds2_1.at(0);
+        tau1_trackSip3dSig_1 = IP3Ds2_1.at(1);
+      }
+      pAddJet->trackSip3dSig_3_2  = trackSip3dSig_3;
+      pAddJet->trackSip3dSig_2_2  = trackSip3dSig_2;
+      pAddJet->trackSip3dSig_1_2  = trackSip3dSig_1;
+      pAddJet->trackSip3dSig_0_2  = trackSip3dSig_0;
+      pAddJet->tau1_trackSip3dSig_0_2  = tau1_trackSip3dSig_0;
+      pAddJet->tau1_trackSip3dSig_1_2  = tau1_trackSip3dSig_1;
+
+      std::sort( IP3Ds3.begin(),IP3Ds3.end(),std::greater<float>() );
+      std::sort( IP3Ds3_1.begin(),IP3Ds3_1.end(),std::greater<float>() );
+      num_1 = IP3Ds3_1.size();
+      switch(contTrk){
+      case 0:
+        trackSip3dSig_0 = dummyTrack;
+        trackSip3dSig_1 = dummyTrack;
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 1:
+        trackSip3dSig_0 = IP3Ds3.at(0);
+        trackSip3dSig_1 = dummyTrack;
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 2:
+        trackSip3dSig_0 = IP3Ds3.at(0);
+        trackSip3dSig_1 = IP3Ds3.at(1);
+        trackSip3dSig_2 = dummyTrack;
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      case 3:
+        trackSip3dSig_0 = IP3Ds3.at(0);
+        trackSip3dSig_1 = IP3Ds3.at(1);
+        trackSip3dSig_2 = IP3Ds3.at(2);
+        trackSip3dSig_3 = dummyTrack;
+        break;
+      default:
+        trackSip3dSig_0 = IP3Ds3.at(0);
+        trackSip3dSig_1 = IP3Ds3.at(1);
+        trackSip3dSig_2 = IP3Ds3.at(2);
+        trackSip3dSig_3 = IP3Ds3.at(3);
+      }
+      pAddJet->trackSip3dSig_3_3  = trackSip3dSig_3;
+      pAddJet->trackSip3dSig_2_3  = trackSip3dSig_2;
+      pAddJet->trackSip3dSig_1_3  = trackSip3dSig_1;
+      pAddJet->trackSip3dSig_0_3  = trackSip3dSig_0;
+      pAddJet->tau1_trackSip3dSig_0_3  = tau1_trackSip3dSig_0;
+      pAddJet->tau1_trackSip3dSig_1_3  = tau1_trackSip3dSig_1;
 
       math::XYZTLorentzVector allSum = allKinematics.weightedVectorSum() ;
 
@@ -1145,267 +1364,385 @@ void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent,
       
       //Find (0,1) leading SV in mass (higher mass) and flight distance error (lowest error) and tau axis closest to them
       if (VTXmass.size()>0) {
-	std::vector<tauAxes> tausSVmass;
-	const reco::VertexCompositePtrCandidate &vertex_SVmass = svTagInfoCollection[svIndex].secondaryVertex(VTXmass.rbegin()->second);
-	GlobalVector flightDir_SVmass = svTagInfoCollection[svIndex].flightDirection(VTXmass.rbegin()->second);
+	std::vector<tauAxes> tausSVmass0;
+	const reco::VertexCompositePtrCandidate &vertex_SVmass0 = svTagInfoCollection[svIndex].secondaryVertex(VTXmass.rbegin()->second);
+	GlobalVector flightDir_SVmass0 = svTagInfoCollection[svIndex].flightDirection(VTXmass.rbegin()->second);
 
 	for (size_t i=0; i<3; ++i) {
-	  tausSVmass.push_back(tauAxes(currentAxes[i],reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(VTXmass.rbegin()->second),currentAxes[i])));
+	  tausSVmass0.push_back(tauAxes(currentAxes[i],reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(VTXmass.rbegin()->second),currentAxes[i])));
 	}
-	std::sort(tausSVmass.begin(),tausSVmass.end(),compAxesSV);
+	std::sort(tausSVmass0.begin(),tausSVmass0.end(),compAxesSV);
 
-	//loop over the vertices that belong to the tau_SVmass and tau_SVmass1
-	pAddJet->tau_SVmass_nSecondaryVertices   = 0; 
-	pAddJet->tau_SVmass_flightDistance2dSig  = -1;
-	pAddJet->tau_SVmass_vertexDeltaR         = -1;
-	pAddJet->tau_SVmass_vertexNTracks        = 0; 
-	pAddJet->tau_SVmass_vertexEnergyRatio    = -1;
-	pAddJet->tau_SVmass_vertexMass           = -1;
-	pAddJet->tau_SVmass_vertexMass_corrected = -1;
-	pAddJet->tau_SVmass_zratio               = -5;
-	float tau_SVmass_nSecondaryVertices      = 0; 
+	//loop over the vertices that belong to the tau_SVmass0 and tau_SVmass01
+	pAddJet->tau_SVmass0_nSecondaryVertices   = 0; 
+	pAddJet->tau_SVmass0_flightDistance2dSig  = -1;
+	pAddJet->tau_SVmass0_vertexDeltaR         = -1;
+	pAddJet->tau_SVmass0_vertexNTracks        = 0; 
+	pAddJet->tau_SVmass0_vertexEnergyRatio    = -1;
+	pAddJet->tau_SVmass0_vertexMass           = -1;
+	pAddJet->tau_SVmass0_vertexMass_corrected = -1;
+	pAddJet->tau_SVmass0_zratio               = -5;
+	float tau_SVmass0_nSecondaryVertices      = 0; 
 	
-	reco::TrackKinematics tau_SVmass_Kinematics;
-	std::vector<float> tau_SVmass_trackEtaRels;
+	reco::TrackKinematics tau_SVmass0_Kinematics;
+	std::vector<float> tau_SVmass0_trackEtaRels;
 	for ( std::map<double, size_t>::reverse_iterator iVtx=VTXmass.rbegin(); iVtx!=VTXmass.rend(); ++iVtx) {
 	  const reco::VertexCompositePtrCandidate &vertex =  svTagInfoCollection[svIndex].secondaryVertex(iVtx->second);
 	  reco::TrackKinematics vtxKinematics;
 	  vertexKinematicsAndChange(vertex, vtxKinematics);
-	  if ( (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass[1].tau))
-	       &&  (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass[2].tau))
+	  if ( (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass0[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass0[1].tau))
+	       &&  (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass0[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass0[2].tau))
 	       ) {
-	    tau_SVmass_Kinematics  = tau_SVmass_Kinematics + vtxKinematics;
-	    pAddJet->tau_SVmass_vertexNTracks  += svTagInfoCollection[svIndex].secondaryVertex(iVtx->second).numberOfSourceCandidatePtrs();
-	    if( pAddJet->tau_SVmass_flightDistance2dSig  < 0 ) {
-	      pAddJet->tau_SVmass_flightDistance2dSig  = svTagInfoCollection[svIndex].flightDistance(iVtx->second,true).significance();
-	      pAddJet->tau_SVmass_vertexDeltaR  = reco::deltaR(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass[0].tau);
+	    tau_SVmass0_Kinematics  = tau_SVmass0_Kinematics + vtxKinematics;
+	    pAddJet->tau_SVmass0_vertexNTracks  += svTagInfoCollection[svIndex].secondaryVertex(iVtx->second).numberOfSourceCandidatePtrs();
+	    if( pAddJet->tau_SVmass0_flightDistance2dSig  < 0 ) {
+	      pAddJet->tau_SVmass0_flightDistance2dSig  = svTagInfoCollection[svIndex].flightDistance(iVtx->second,true).significance();
+	      pAddJet->tau_SVmass0_vertexDeltaR  = reco::deltaR(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass0[0].tau);
 	    }
 	    
-	    etaRelToTauAxis(vertex, tausSVmass[0].tau, tau_SVmass_trackEtaRels);
-	    tau_SVmass_nSecondaryVertices += 1;
+	    etaRelToTauAxis(vertex, tausSVmass0[0].tau, tau_SVmass0_trackEtaRels);
+	    tau_SVmass0_nSecondaryVertices += 1;
 	  }
 	}
-	pAddJet->tau_SVmass_nSecondaryVertices = tau_SVmass_nSecondaryVertices;
-	float tau_SVmass_trackEtaRel_0, tau_SVmass_trackEtaRel_1, tau_SVmass_trackEtaRel_2;
-	std::sort( tau_SVmass_trackEtaRels.begin(),tau_SVmass_trackEtaRels.end() );
-	float tau_SVmass_dummyEtaRel = -1.;
-	switch(tau_SVmass_trackEtaRels.size()) {
+	pAddJet->tau_SVmass0_nSecondaryVertices = tau_SVmass0_nSecondaryVertices;
+	float tau_SVmass0_trackEtaRel_0, tau_SVmass0_trackEtaRel_1, tau_SVmass0_trackEtaRel_2;
+	std::sort( tau_SVmass0_trackEtaRels.begin(),tau_SVmass0_trackEtaRels.end() );
+	float tau_SVmass0_dummyEtaRel = -1.;
+	switch(tau_SVmass0_trackEtaRels.size()) {
 	case 0:
-	  tau_SVmass_trackEtaRel_0 = tau_SVmass_dummyEtaRel;
-	  tau_SVmass_trackEtaRel_1 = tau_SVmass_dummyEtaRel;
-	  tau_SVmass_trackEtaRel_2 = tau_SVmass_dummyEtaRel;
+	  tau_SVmass0_trackEtaRel_0 = tau_SVmass0_dummyEtaRel;
+	  tau_SVmass0_trackEtaRel_1 = tau_SVmass0_dummyEtaRel;
+	  tau_SVmass0_trackEtaRel_2 = tau_SVmass0_dummyEtaRel;
 	  break;
 	case 1:
-	  tau_SVmass_trackEtaRel_0 = tau_SVmass_trackEtaRels.at(0);
-	  tau_SVmass_trackEtaRel_1 = tau_SVmass_dummyEtaRel;
-	  tau_SVmass_trackEtaRel_2 = tau_SVmass_dummyEtaRel;
+	  tau_SVmass0_trackEtaRel_0 = tau_SVmass0_trackEtaRels.at(0);
+	  tau_SVmass0_trackEtaRel_1 = tau_SVmass0_dummyEtaRel;
+	  tau_SVmass0_trackEtaRel_2 = tau_SVmass0_dummyEtaRel;
 	  break;
 	case 2:
-	  tau_SVmass_trackEtaRel_0 = tau_SVmass_trackEtaRels.at(0);
-	  tau_SVmass_trackEtaRel_1 = tau_SVmass_trackEtaRels.at(1);
-	  tau_SVmass_trackEtaRel_2 = tau_SVmass_dummyEtaRel;
+	  tau_SVmass0_trackEtaRel_0 = tau_SVmass0_trackEtaRels.at(0);
+	  tau_SVmass0_trackEtaRel_1 = tau_SVmass0_trackEtaRels.at(1);
+	  tau_SVmass0_trackEtaRel_2 = tau_SVmass0_dummyEtaRel;
 	  break;
 	default:
-	  tau_SVmass_trackEtaRel_0 = tau_SVmass_trackEtaRels.at(0);
-	  tau_SVmass_trackEtaRel_1 = tau_SVmass_trackEtaRels.at(1);
-	  tau_SVmass_trackEtaRel_2 = tau_SVmass_trackEtaRels.at(2);
+	  tau_SVmass0_trackEtaRel_0 = tau_SVmass0_trackEtaRels.at(0);
+	  tau_SVmass0_trackEtaRel_1 = tau_SVmass0_trackEtaRels.at(1);
+	  tau_SVmass0_trackEtaRel_2 = tau_SVmass0_trackEtaRels.at(2);
 	}
-	pAddJet->tau_SVmass_trackEtaRel_2  = tau_SVmass_trackEtaRel_2;
-	pAddJet->tau_SVmass_trackEtaRel_1  = tau_SVmass_trackEtaRel_1;
-	pAddJet->tau_SVmass_trackEtaRel_0  = tau_SVmass_trackEtaRel_0;
+	pAddJet->tau_SVmass0_trackEtaRel_2  = tau_SVmass0_trackEtaRel_2;
+	pAddJet->tau_SVmass0_trackEtaRel_1  = tau_SVmass0_trackEtaRel_1;
+	pAddJet->tau_SVmass0_trackEtaRel_0  = tau_SVmass0_trackEtaRel_0;
 
-	if ( pAddJet->tau_SVmass_nSecondaryVertices  > 0. ) {
+	if ( pAddJet->tau_SVmass0_nSecondaryVertices  > 0. ) {
 	  // vertexEnergyRatio                                                                                                                                                                                            
-	  math::XYZTLorentzVector tau_SVmass_vertexSum = tau_SVmass_Kinematics.weightedVectorSum();
-	  pAddJet->tau_SVmass_vertexEnergyRatio  = tau_SVmass_vertexSum.E() / allSum.E();
+	  math::XYZTLorentzVector tau_SVmass0_vertexSum = tau_SVmass0_Kinematics.weightedVectorSum();
+	  pAddJet->tau_SVmass0_vertexEnergyRatio  = tau_SVmass0_vertexSum.E() / allSum.E();
 	  // vertexMass                                                                                                                                                                                                   
-	  pAddJet->tau_SVmass_vertexMass  = tau_SVmass_vertexSum.M();
-	  double tau_SVmass_vertexPt2 = math::XYZVector(flightDir_SVmass.x(), flightDir_SVmass.y(), flightDir_SVmass.z()).Cross(tau_SVmass_vertexSum).Mag2() / flightDir_SVmass.mag2();
-	  pAddJet->tau_SVmass_vertexMass_corrected  =std::sqrt( tau_SVmass_vertexSum.M() *  tau_SVmass_vertexSum.M() + tau_SVmass_vertexPt2) + std::sqrt(tau_SVmass_vertexPt2);
+	  pAddJet->tau_SVmass0_vertexMass  = tau_SVmass0_vertexSum.M();
+	  double tau_SVmass0_vertexPt2 = math::XYZVector(flightDir_SVmass0.x(), flightDir_SVmass0.y(), flightDir_SVmass0.z()).Cross(tau_SVmass0_vertexSum).Mag2() / flightDir_SVmass0.mag2();
+	  pAddJet->tau_SVmass0_vertexMass_corrected  =std::sqrt( tau_SVmass0_vertexSum.M() *  tau_SVmass0_vertexSum.M() + tau_SVmass0_vertexPt2) + std::sqrt(tau_SVmass0_vertexPt2);
 	  // z ratio                                                                                                                                                                                                      
-	  pAddJet->tau_SVmass_zratio =  reco::deltaR2(tausSVmass[1].tau+tausSVmass[2].tau,tausSVmass[0].tau)*(vertex_SVmass.p4().pt()/vertex_SVmass.p4().mass());
+	  pAddJet->tau_SVmass0_zratio =  reco::deltaR2(tausSVmass0[1].tau+tausSVmass0[2].tau,tausSVmass0[0].tau)*(vertex_SVmass0.p4().pt()/vertex_SVmass0.p4().mass());
 	}
       }
 
-      /*
       if (VTXmass.size()>1) {
-	std::vector<tauAxes> tausSVmass1; 
-        const reco::VertexCompositePtrCandidate &vertex_SVmass1 = svTagInfoCollection[svIndex].secondaryVertex((VTXmass.rbegin()+1)->second);
-        GlobalVector flightDir_SVmass1 = svTagInfoCollection[svIndex].flightDirection((VTXmass.rbegin()+1)->second);
+	std::vector<tauAxes> tausSVmass1;
+        const reco::VertexCompositePtrCandidate &vertex_SVmass1 = svTagInfoCollection[svIndex].secondaryVertex(VTXmass.rbegin()->second+1);
+        GlobalVector flightDir_SVmass1 = svTagInfoCollection[svIndex].flightDirection((VTXmass.rbegin()->second)+1);
 
         for (size_t i=0; i<3; ++i) {
-          tausSVmass1.push_back(tauAxes(currentAxes[i],reco::deltaR2(svTagInfoCollection[svIndex].flightDirection((VTXmass.rbegin()+1)->second),currentAxes[i])));
+          tausSVmass1.push_back(tauAxes(currentAxes[i],reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(VTXmass.rbegin()->second+1),currentAxes[i])));
         }
 	std::sort(tausSVmass1.begin(),tausSVmass1.end(),compAxesSV);
 
-	pAddJet->tau_SVmass1_nSecondaryVertices   = 0;
+        pAddJet->tau_SVmass1_nSecondaryVertices   = 0;
         pAddJet->tau_SVmass1_flightDistance2dSig  = -1;
         pAddJet->tau_SVmass1_vertexDeltaR         = -1;
-        pAddJet->tau_SVmass1_vertexNTracks        = 0; 
+        pAddJet->tau_SVmass1_vertexNTracks        = 0;
         pAddJet->tau_SVmass1_vertexEnergyRatio    = -1;
         pAddJet->tau_SVmass1_vertexMass           = -1;
         pAddJet->tau_SVmass1_vertexMass_corrected = -1;
         pAddJet->tau_SVmass1_zratio               = -5;
-        float tau_SVmass1_nSecondaryVertices      = 0; 
+        float tau_SVmass1_nSecondaryVertices      = 0;
 
 	reco::TrackKinematics tau_SVmass1_Kinematics;
 	std::vector<float> tau_SVmass1_trackEtaRels;
-        for ( std::map<double, size_t>::reverse_iterator iVtx=VTXmass.rbegin()+1; iVtx!=VTXmass.rend(); ++iVtx) {
-          const reco::VertexCompositePtrCandidate &vertex1 =  svTagInfoCollection[svIndex].secondaryVertex(iVtx->second);
-	  reco::TrackKinematics vtxKinematics1;
-          vertexKinematicsAndChange(vertex1, vtxKinematics1);
-          if ( (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass1[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass[1].tau))
-               &&  (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass1[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass[2].tau))
-               ) {
-            tau_SVmass1_Kinematics  = tau_SVmass1_Kinematics + vtxKinematics1;
-            pAddJet->tau_SVmass1_vertexNTracks  += svTagInfoCollection[svIndex].secondaryVertex(iVtx->second).numberOfSourceCandidatePtrs();
+        for ( std::map<double, size_t>::reverse_iterator iVtx=VTXmass.rbegin(); iVtx!=VTXmass.rend(); ++iVtx) {
+          const reco::VertexCompositePtrCandidate &vertex =  svTagInfoCollection[svIndex].secondaryVertex(iVtx->second+1);
+	  reco::TrackKinematics vtxKinematics;
+          vertexKinematicsAndChange(vertex, vtxKinematics);
+          if ( (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVmass1[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVmass1[1].tau))
+               &&  (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVmass1[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVmass1[2].tau))
+	       ) {
+            tau_SVmass1_Kinematics  = tau_SVmass1_Kinematics + vtxKinematics;
+            pAddJet->tau_SVmass1_vertexNTracks  += svTagInfoCollection[svIndex].secondaryVertex(iVtx->second+1).numberOfSourceCandidatePtrs();
             if( pAddJet->tau_SVmass1_flightDistance2dSig  < 0 ) {
-              pAddJet->tau_SVmass1_flightDistance2dSig  = svTagInfoCollection[svIndex].flightDistance(iVtx->second,true).significance();
-              pAddJet->tau_SVmass1_vertexDeltaR  = reco::deltaR(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVmass[0].tau);
+              pAddJet->tau_SVmass1_flightDistance2dSig  = svTagInfoCollection[svIndex].flightDistance(iVtx->second+1,true).significance();
+              pAddJet->tau_SVmass1_vertexDeltaR  = reco::deltaR(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVmass1[0].tau);
             }
-            etaRelToTauAxis(vertex1, tausSVmass1[0].tau, tau_SVmass1_trackEtaRels);
+
+            etaRelToTauAxis(vertex, tausSVmass1[0].tau, tau_SVmass1_trackEtaRels);
             tau_SVmass1_nSecondaryVertices += 1;
           }
         }
+        pAddJet->tau_SVmass1_nSecondaryVertices = tau_SVmass1_nSecondaryVertices;
+        float tau_SVmass1_trackEtaRel_0, tau_SVmass1_trackEtaRel_1, tau_SVmass1_trackEtaRel_2;
+	std::sort( tau_SVmass1_trackEtaRels.begin(),tau_SVmass1_trackEtaRels.end() );
+        float tau_SVmass1_dummyEtaRel = -1.;
+        switch(tau_SVmass1_trackEtaRels.size()) {
+        case 0:
+          tau_SVmass1_trackEtaRel_0 = tau_SVmass1_dummyEtaRel;
+          tau_SVmass1_trackEtaRel_1 = tau_SVmass1_dummyEtaRel;
+          tau_SVmass1_trackEtaRel_2 = tau_SVmass1_dummyEtaRel;
+          break;
+        case 1:
+          tau_SVmass1_trackEtaRel_0 = tau_SVmass1_trackEtaRels.at(0);
+          tau_SVmass1_trackEtaRel_1 = tau_SVmass1_dummyEtaRel;
+          tau_SVmass1_trackEtaRel_2 = tau_SVmass1_dummyEtaRel;
+          break;
+        case 2:
+          tau_SVmass1_trackEtaRel_0 = tau_SVmass1_trackEtaRels.at(0);
+          tau_SVmass1_trackEtaRel_1 = tau_SVmass1_trackEtaRels.at(1);
+          tau_SVmass1_trackEtaRel_2 = tau_SVmass1_dummyEtaRel;
+          break;
+        default:
+          tau_SVmass1_trackEtaRel_0 = tau_SVmass1_trackEtaRels.at(0);
+          tau_SVmass1_trackEtaRel_1 = tau_SVmass1_trackEtaRels.at(1);
+          tau_SVmass1_trackEtaRel_2 = tau_SVmass1_trackEtaRels.at(2);
+        }
+        pAddJet->tau_SVmass1_trackEtaRel_2  = tau_SVmass1_trackEtaRel_2;
+        pAddJet->tau_SVmass1_trackEtaRel_1  = tau_SVmass1_trackEtaRel_1;
+        pAddJet->tau_SVmass1_trackEtaRel_0  = tau_SVmass1_trackEtaRel_0;
+
+        if ( pAddJet->tau_SVmass1_nSecondaryVertices  > 0. ) {
+	  math::XYZTLorentzVector tau_SVmass1_vertexSum = tau_SVmass1_Kinematics.weightedVectorSum();
+          pAddJet->tau_SVmass1_vertexEnergyRatio  = tau_SVmass1_vertexSum.E() / allSum.E();
+	  pAddJet->tau_SVmass1_vertexMass  = tau_SVmass1_vertexSum.M();
+          double tau_SVmass1_vertexPt2 = math::XYZVector(flightDir_SVmass1.x(), flightDir_SVmass1.y(), flightDir_SVmass1.z()).Cross(tau_SVmass1_vertexSum).Mag2() / flightDir_SVmass1.mag2();
+          pAddJet->tau_SVmass1_vertexMass_corrected  =std::sqrt( tau_SVmass1_vertexSum.M() *  tau_SVmass1_vertexSum.M() + tau_SVmass1_vertexPt2) + std::sqrt(tau_SVmass1_vertexPt2);
+	  pAddJet->tau_SVmass1_zratio =  reco::deltaR2(tausSVmass1[1].tau+tausSVmass1[2].tau,tausSVmass1[0].tau)*(vertex_SVmass1.p4().pt()/vertex_SVmass1.p4().mass());
+        }
       }
-      */
+
       if (VTXfd.size()>0) {
-	std::vector<tauAxes> tausSVfd;
-	const reco::VertexCompositePtrCandidate &vertex_SVfd = svTagInfoCollection[svIndex].secondaryVertex(VTXfd.begin()->second);
-	GlobalVector flightDir_SVfd = svTagInfoCollection[svIndex].flightDirection(VTXfd.begin()->second);
+	std::vector<tauAxes> tausSVfd0;
+	const reco::VertexCompositePtrCandidate &vertex_SVfd0 = svTagInfoCollection[svIndex].secondaryVertex(VTXfd.begin()->second);
+	GlobalVector flightDir_SVfd0 = svTagInfoCollection[svIndex].flightDirection(VTXfd.begin()->second);
 	
 	for (size_t i=0; i<3; ++i) {
-	  tausSVfd.push_back(tauAxes(currentAxes[i],reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(VTXfd.begin()->second),currentAxes[i])));
+	  tausSVfd0.push_back(tauAxes(currentAxes[i],reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(VTXfd.begin()->second),currentAxes[i])));
 	}
 	// order taus according to dR to SV with lowest flighDistanceError                                                                                                                                                  
-	std::sort(tausSVfd.begin(),tausSVfd.end(),compAxesSV);
+	std::sort(tausSVfd0.begin(),tausSVfd0.end(),compAxesSV);
 	
-	pAddJet->tau_SVfd_nSecondaryVertices = 0;
-	pAddJet->tau_SVfd_flightDistance2dSig = -1;
-	pAddJet->tau_SVfd_vertexDeltaR = -1;
-	pAddJet->tau_SVfd_vertexNTracks = 0;
-	pAddJet->tau_SVfd_vertexEnergyRatio = -1;
-	pAddJet->tau_SVfd_vertexMass = -1;
-	pAddJet->tau_SVfd_vertexMass_corrected = -1;
-	pAddJet->tau_SVfd_zratio = -5;
-	float tau_SVfd_nSecondaryVertices = 0;
+	pAddJet->tau_SVfd0_nSecondaryVertices = 0;
+	pAddJet->tau_SVfd0_flightDistance2dSig = -1;
+	pAddJet->tau_SVfd0_vertexDeltaR = -1;
+	pAddJet->tau_SVfd0_vertexNTracks = 0;
+	pAddJet->tau_SVfd0_vertexEnergyRatio = -1;
+	pAddJet->tau_SVfd0_vertexMass = -1;
+	pAddJet->tau_SVfd0_vertexMass_corrected = -1;
+	pAddJet->tau_SVfd0_zratio = -5;
+	float tau_SVfd0_nSecondaryVertices = 0;
 	
-	reco::TrackKinematics tau_SVfd_Kinematics;
-	std::vector<float> tau_SVfd_trackEtaRels;
+	reco::TrackKinematics tau_SVfd0_Kinematics;
+	std::vector<float> tau_SVfd0_trackEtaRels;
 	for ( std::map<double, size_t>::iterator iVtx=VTXfd.begin(); iVtx!=VTXfd.end(); ++iVtx) {
 	  const reco::VertexCompositePtrCandidate &vertex =  svTagInfoCollection[svIndex].secondaryVertex(iVtx->second);
 	  reco::TrackKinematics vtxKinematics;
 	  vertexKinematicsAndChange(vertex, vtxKinematics);
-	  if ( (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd[1].tau) )
-	       &&  (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd[2].tau))
+	  if ( (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd0[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd0[1].tau) )
+	       &&  (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd0[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd0[2].tau))
 	       ) {
-	    tau_SVfd_Kinematics  = tau_SVfd_Kinematics + vtxKinematics;
-	    pAddJet->tau_SVfd_vertexNTracks  += svTagInfoCollection[svIndex].secondaryVertex(iVtx->second).numberOfSourceCandidatePtrs();
-	    if( pAddJet->tau_SVfd_flightDistance2dSig  < 0 ) {
-	      pAddJet->tau_SVfd_flightDistance2dSig  = svTagInfoCollection[svIndex].flightDistance(iVtx->second,true).significance();
-	      pAddJet->tau_SVfd_vertexDeltaR  = reco::deltaR(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd[0].tau);
+	    tau_SVfd0_Kinematics  = tau_SVfd0_Kinematics + vtxKinematics;
+	    pAddJet->tau_SVfd0_vertexNTracks  += svTagInfoCollection[svIndex].secondaryVertex(iVtx->second).numberOfSourceCandidatePtrs();
+	    if( pAddJet->tau_SVfd0_flightDistance2dSig  < 0 ) {
+	      pAddJet->tau_SVfd0_flightDistance2dSig  = svTagInfoCollection[svIndex].flightDistance(iVtx->second,true).significance();
+	      pAddJet->tau_SVfd0_vertexDeltaR  = reco::deltaR(svTagInfoCollection[svIndex].flightDirection(iVtx->second),tausSVfd0[0].tau);
 	    }
 	   
-	    etaRelToTauAxis(vertex, tausSVfd[0].tau, tau_SVfd_trackEtaRels);
-	    tau_SVfd_nSecondaryVertices += 1;
+	    etaRelToTauAxis(vertex, tausSVfd0[0].tau, tau_SVfd0_trackEtaRels);
+	    tau_SVfd0_nSecondaryVertices += 1;
 	  }
 	}
-	pAddJet->tau_SVfd_nSecondaryVertices = tau_SVfd_nSecondaryVertices;
-	float tau_SVfd_trackEtaRel_0, tau_SVfd_trackEtaRel_1, tau_SVfd_trackEtaRel_2;
-	std::sort( tau_SVfd_trackEtaRels.begin(),tau_SVfd_trackEtaRels.end() );
-	float tau_SVfd_dummyEtaRel = -1.;
-	switch(tau_SVfd_trackEtaRels.size()){
+	pAddJet->tau_SVfd0_nSecondaryVertices = tau_SVfd0_nSecondaryVertices;
+	float tau_SVfd0_trackEtaRel_0, tau_SVfd0_trackEtaRel_1, tau_SVfd0_trackEtaRel_2;
+	std::sort( tau_SVfd0_trackEtaRels.begin(),tau_SVfd0_trackEtaRels.end() );
+	float tau_SVfd0_dummyEtaRel = -1.;
+	switch(tau_SVfd0_trackEtaRels.size()){
 	case 0:
-	  tau_SVfd_trackEtaRel_0 = tau_SVfd_dummyEtaRel;
-	  tau_SVfd_trackEtaRel_1 = tau_SVfd_dummyEtaRel;
-	  tau_SVfd_trackEtaRel_2 = tau_SVfd_dummyEtaRel;
+	  tau_SVfd0_trackEtaRel_0 = tau_SVfd0_dummyEtaRel;
+	  tau_SVfd0_trackEtaRel_1 = tau_SVfd0_dummyEtaRel;
+	  tau_SVfd0_trackEtaRel_2 = tau_SVfd0_dummyEtaRel;
 	  break;
 	case 1:
-	  tau_SVfd_trackEtaRel_0 = tau_SVfd_trackEtaRels.at(0);
-	  tau_SVfd_trackEtaRel_1 = tau_SVfd_dummyEtaRel;
-	  tau_SVfd_trackEtaRel_2 = tau_SVfd_dummyEtaRel;
+	  tau_SVfd0_trackEtaRel_0 = tau_SVfd0_trackEtaRels.at(0);
+	  tau_SVfd0_trackEtaRel_1 = tau_SVfd0_dummyEtaRel;
+	  tau_SVfd0_trackEtaRel_2 = tau_SVfd0_dummyEtaRel;
 	  break;
 	case 2:
-	  tau_SVfd_trackEtaRel_0 = tau_SVfd_trackEtaRels.at(0);
-	  tau_SVfd_trackEtaRel_1 = tau_SVfd_trackEtaRels.at(1);
-	  tau_SVfd_trackEtaRel_2 = tau_SVfd_dummyEtaRel;
+	  tau_SVfd0_trackEtaRel_0 = tau_SVfd0_trackEtaRels.at(0);
+	  tau_SVfd0_trackEtaRel_1 = tau_SVfd0_trackEtaRels.at(1);
+	  tau_SVfd0_trackEtaRel_2 = tau_SVfd0_dummyEtaRel;
 	  break;
 	default:
-	  tau_SVfd_trackEtaRel_0 = tau_SVfd_trackEtaRels.at(0);
-	  tau_SVfd_trackEtaRel_1 = tau_SVfd_trackEtaRels.at(1);
-	  tau_SVfd_trackEtaRel_2 = tau_SVfd_trackEtaRels.at(2);
+	  tau_SVfd0_trackEtaRel_0 = tau_SVfd0_trackEtaRels.at(0);
+	  tau_SVfd0_trackEtaRel_1 = tau_SVfd0_trackEtaRels.at(1);
+	  tau_SVfd0_trackEtaRel_2 = tau_SVfd0_trackEtaRels.at(2);
 	}
-	pAddJet->tau_SVfd_trackEtaRel_2  = tau_SVfd_trackEtaRel_2;
-	pAddJet->tau_SVfd_trackEtaRel_1  = tau_SVfd_trackEtaRel_1;
-	pAddJet->tau_SVfd_trackEtaRel_0  = tau_SVfd_trackEtaRel_0;
+	pAddJet->tau_SVfd0_trackEtaRel_2  = tau_SVfd0_trackEtaRel_2;
+	pAddJet->tau_SVfd0_trackEtaRel_1  = tau_SVfd0_trackEtaRel_1;
+	pAddJet->tau_SVfd0_trackEtaRel_0  = tau_SVfd0_trackEtaRel_0;
 	
-	if ( pAddJet->tau_SVfd_nSecondaryVertices  > 0. ) {
-	  math::XYZTLorentzVector tau_SVfd_vertexSum = tau_SVfd_Kinematics.weightedVectorSum();
-	  pAddJet->tau_SVfd_vertexEnergyRatio  = tau_SVfd_vertexSum.E() / allSum.E();
-	  pAddJet->tau_SVfd_vertexMass  = tau_SVfd_vertexSum.M();
-	  double tau_SVfd_vertexPt2 = math::XYZVector(flightDir_SVfd.x(), flightDir_SVfd.y(), flightDir_SVfd.z()).Cross(tau_SVfd_vertexSum).Mag2() / flightDir_SVfd.mag2();
-	  pAddJet->tau_SVfd_vertexMass_corrected  =std::sqrt(tau_SVfd_vertexSum.M() * tau_SVfd_vertexSum.M() + tau_SVfd_vertexPt2) + std::sqrt(tau_SVfd_vertexPt2);
-	  pAddJet->tau_SVfd_zratio =  reco::deltaR2(tausSVfd[1].tau+tausSVfd[2].tau,tausSVfd[0].tau)*(vertex_SVfd.p4().pt()/vertex_SVfd.p4().mass());
+	if ( pAddJet->tau_SVfd0_nSecondaryVertices  > 0. ) {
+	  math::XYZTLorentzVector tau_SVfd0_vertexSum = tau_SVfd0_Kinematics.weightedVectorSum();
+	  pAddJet->tau_SVfd0_vertexEnergyRatio  = tau_SVfd0_vertexSum.E() / allSum.E();
+	  pAddJet->tau_SVfd0_vertexMass  = tau_SVfd0_vertexSum.M();
+	  double tau_SVfd0_vertexPt2 = math::XYZVector(flightDir_SVfd0.x(), flightDir_SVfd0.y(), flightDir_SVfd0.z()).Cross(tau_SVfd0_vertexSum).Mag2() / flightDir_SVfd0.mag2();
+	  pAddJet->tau_SVfd0_vertexMass_corrected  =std::sqrt(tau_SVfd0_vertexSum.M() * tau_SVfd0_vertexSum.M() + tau_SVfd0_vertexPt2) + std::sqrt(tau_SVfd0_vertexPt2);
+	  pAddJet->tau_SVfd0_zratio =  reco::deltaR2(tausSVfd0[1].tau+tausSVfd0[2].tau,tausSVfd0[0].tau)*(vertex_SVfd0.p4().pt()/vertex_SVfd0.p4().mass());
 	}
+      }
+
+      if (VTXfd.size()>1) {
+	std::vector<tauAxes> tausSVfd1;
+        const reco::VertexCompositePtrCandidate &vertex_SVfd1 = svTagInfoCollection[svIndex].secondaryVertex(VTXfd.begin()->second+1);
+        GlobalVector flightDir_SVfd1 = svTagInfoCollection[svIndex].flightDirection(VTXfd.begin()->second+1);
+
+        for (size_t i=0; i<3; ++i) {
+          tausSVfd1.push_back(tauAxes(currentAxes[i],reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(VTXfd.begin()->second+1),currentAxes[i])));
+        }
+	std::sort(tausSVfd1.begin(),tausSVfd1.end(),compAxesSV);
+
+        pAddJet->tau_SVfd1_nSecondaryVertices = 0;
+        pAddJet->tau_SVfd1_flightDistance2dSig = -1;
+        pAddJet->tau_SVfd1_vertexDeltaR = -1;
+        pAddJet->tau_SVfd1_vertexNTracks = 0;
+        pAddJet->tau_SVfd1_vertexEnergyRatio = -1;
+        pAddJet->tau_SVfd1_vertexMass = -1;
+        pAddJet->tau_SVfd1_vertexMass_corrected = -1;
+        pAddJet->tau_SVfd1_zratio = -5;
+        float tau_SVfd1_nSecondaryVertices = 0;
+
+	reco::TrackKinematics tau_SVfd1_Kinematics;
+	std::vector<float> tau_SVfd1_trackEtaRels;
+        for ( std::map<double, size_t>::iterator iVtx=VTXfd.begin(); iVtx!=VTXfd.end(); ++iVtx) {
+          const reco::VertexCompositePtrCandidate &vertex =  svTagInfoCollection[svIndex].secondaryVertex(iVtx->second+1);
+	  reco::TrackKinematics vtxKinematics;
+          vertexKinematicsAndChange(vertex, vtxKinematics);
+          if ( (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVfd1[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVfd1[1].tau) )
+               &&  (reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVfd1[0].tau) < reco::deltaR2(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVfd1[2].tau))
+               ) {
+            tau_SVfd1_Kinematics  = tau_SVfd1_Kinematics + vtxKinematics;
+            pAddJet->tau_SVfd1_vertexNTracks  += svTagInfoCollection[svIndex].secondaryVertex(iVtx->second+1).numberOfSourceCandidatePtrs();
+            if( pAddJet->tau_SVfd1_flightDistance2dSig  < 0 ) {
+              pAddJet->tau_SVfd1_flightDistance2dSig  = svTagInfoCollection[svIndex].flightDistance(iVtx->second+1,true).significance();
+              pAddJet->tau_SVfd1_vertexDeltaR  = reco::deltaR(svTagInfoCollection[svIndex].flightDirection(iVtx->second+1),tausSVfd1[0].tau);
+            }
+
+            etaRelToTauAxis(vertex, tausSVfd1[0].tau, tau_SVfd1_trackEtaRels);
+            tau_SVfd1_nSecondaryVertices += 1;
+          }
+	}
+        pAddJet->tau_SVfd1_nSecondaryVertices = tau_SVfd1_nSecondaryVertices;
+        float tau_SVfd1_trackEtaRel_0, tau_SVfd1_trackEtaRel_1, tau_SVfd1_trackEtaRel_2;
+	std::sort( tau_SVfd1_trackEtaRels.begin(),tau_SVfd1_trackEtaRels.end() );
+        float tau_SVfd1_dummyEtaRel = -1.;
+        switch(tau_SVfd1_trackEtaRels.size()){
+        case 0:
+          tau_SVfd1_trackEtaRel_0 = tau_SVfd1_dummyEtaRel;
+          tau_SVfd1_trackEtaRel_1 = tau_SVfd1_dummyEtaRel;
+          tau_SVfd1_trackEtaRel_2 = tau_SVfd1_dummyEtaRel;
+          break;
+        case 1:
+          tau_SVfd1_trackEtaRel_0 = tau_SVfd1_trackEtaRels.at(0);
+          tau_SVfd1_trackEtaRel_1 = tau_SVfd1_dummyEtaRel;
+          tau_SVfd1_trackEtaRel_2 = tau_SVfd1_dummyEtaRel;
+          break;
+        case 2:
+          tau_SVfd1_trackEtaRel_0 = tau_SVfd1_trackEtaRels.at(0);
+          tau_SVfd1_trackEtaRel_1 = tau_SVfd1_trackEtaRels.at(1);
+          tau_SVfd1_trackEtaRel_2 = tau_SVfd1_dummyEtaRel;
+          break;
+        default:
+          tau_SVfd1_trackEtaRel_0 = tau_SVfd1_trackEtaRels.at(0);
+          tau_SVfd1_trackEtaRel_1 = tau_SVfd1_trackEtaRels.at(1);
+          tau_SVfd1_trackEtaRel_2 = tau_SVfd1_trackEtaRels.at(2);
+        }
+        pAddJet->tau_SVfd1_trackEtaRel_2  = tau_SVfd1_trackEtaRel_2;
+        pAddJet->tau_SVfd1_trackEtaRel_1  = tau_SVfd1_trackEtaRel_1;
+        pAddJet->tau_SVfd1_trackEtaRel_0  = tau_SVfd1_trackEtaRel_0;
+
+        if ( pAddJet->tau_SVfd1_nSecondaryVertices  > 0. ) {
+	  math::XYZTLorentzVector tau_SVfd1_vertexSum = tau_SVfd1_Kinematics.weightedVectorSum();
+          pAddJet->tau_SVfd1_vertexEnergyRatio  = tau_SVfd1_vertexSum.E() / allSum.E();
+          pAddJet->tau_SVfd1_vertexMass  = tau_SVfd1_vertexSum.M();
+          double tau_SVfd1_vertexPt2 = math::XYZVector(flightDir_SVfd1.x(), flightDir_SVfd1.y(), flightDir_SVfd1.z()).Cross(tau_SVfd1_vertexSum).Mag2() / flightDir_SVfd1.mag2();
+          pAddJet->tau_SVfd1_vertexMass_corrected  =std::sqrt(tau_SVfd1_vertexSum.M() * tau_SVfd1_vertexSum.M() + tau_SVfd1_vertexPt2) + std::sqrt(tau_SVfd1_vertexPt2);
+          pAddJet->tau_SVfd1_zratio =  reco::deltaR2(tausSVfd1[1].tau+tausSVfd1[2].tau,tausSVfd1[0].tau)*(vertex_SVfd1.p4().pt()/vertex_SVfd1.p4().mass());
+        }
       }
     }
   }
 
-  /*
+  
   //
   // Soft letpon
   //
 
-  edm::Handle<reco::PFJetCollection> hCMSTTSubJetProduct;
-  iEvent.getByToken(fTokCMSTTSubJetProduct,hCMSTTSubJetProduct);  
-  assert(hCMSTTSubJetProduct.isValid());
-  const reco::PFJetCollection *cmsttSubJetCol = hCMSTTSubJetProduct.product();
-
   // PFMuon
   for (std::size_t lepIndex = 0; lepIndex < softPFMuonTagInfoCollection.size(); ++lepIndex) {
+    float nSM = 0;
     for (size_t PFmu = 0; PFmu < (size_t)softPFMuonTagInfoCollection[lepIndex].leptons(); ++PFmu) {
-      pAddJet->PFMuon_pt       = softPFMuonTagInfoCollection[lepIndex].lepton(PFmu).pt();
-      pAddJet->PFMuon_eta      = softPFMuonTagInfoCollection[lepIndex].lepton(PFmu).eta();
-      pAddJet->PFMuon_phi      = softPFMuonTagInfoCollection[lepIndex].lepton(PFmu).phi();
-      pAddJet->PFMuon_ptrel    = softPFMuonTagInfoCollection[lepIndex].properties(PFmu).ptRel;
+      pAddJet->PFMuon_pt       = softPFMuonTagInfoCollection[lepIndex].lepton(PFmu)->pt();
+      pAddJet->PFMuon_eta      = softPFMuonTagInfoCollection[lepIndex].lepton(PFmu)->eta();
+      pAddJet->PFMuon_phi      = softPFMuonTagInfoCollection[lepIndex].lepton(PFmu)->phi();
+      pAddJet->PFMuon_ptRel    = softPFMuonTagInfoCollection[lepIndex].properties(PFmu).ptRel;
       pAddJet->PFMuon_ratio    = softPFMuonTagInfoCollection[lepIndex].properties(PFmu).ratio;
       pAddJet->PFMuon_ratioRel = softPFMuonTagInfoCollection[lepIndex].properties(PFmu).ratioRel;
       pAddJet->PFMuon_deltaR   = softPFMuonTagInfoCollection[lepIndex].properties(PFmu).deltaR;
       pAddJet->PFMuon_IP       = softPFMuonTagInfoCollection[lepIndex].properties(PFmu).sip3d;
       pAddJet->PFMuon_IP2D     = softPFMuonTagInfoCollection[lepIndex].properties(PFmu).sip2d;
+      nSM ++;
     }
-    const edm::Ptr<reco::Muon> muonPtr = matchMuon(softPFMuonTagInfoCollection[lepIndex].lepton(PFmu), muons );
+    /*
+    // Match muon - should FIX in a next version
+    const reco::Muon muonPtr = match(&softPFMuonTagInfoCollection[lepIndex].lepton(PFMu),muonCol);
     if ( muonPtr.isNonnull() && muonPtr.isAvailable() && muonPtr->isGlobalMuon() ) {
-      pAddJet->PFMuon_nMuHit   = muonPtr->outerTrack()->hitPattern().numberOfValidMuonHits();
-      pAddJet->PFMuon_nTkHit   = muonPtr->innerTrack()->hitPattern().numberOfValidHits();
-      pAddJet->PFMuon_nPixHit  = muonPtr->innerTrack()->hitPattern().numberOfValidPixelHits();
-      pAddJet->PFMuon_nOutHit  = muonPtr->innerTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_OUTER_HITS);
-      pAddJet->PFMuon_nTkLwM   = muonPtr->innerTrack()->hitPattern().trackerLayersWithMeasurement();
-      pAddJet->PFMuon_nPixLwM  = muonPtr->innerTrack()->hitPattern().pixelLayersWithMeasurement();
-      pAddJet->PFMuon_nMatched = muonPtr->numberOfMatchedStations();
-      pAddJet->PFMuon_chi2     = muonPtr->globalTrack()->normalizedChi2();
-      pAddJet->PFMuon_chi2Tk   = muonPtr->innerTrack()->normalizedChi2();
-      pAddJet->PFMuon_isGlobal = 1;
-      pAddJet->PFMuon_dz       = muonPtr->muonBestTrack()->dz(pv->position());
+	pAddJet->PFMuon_nMuHit   = muonPtr->outerTrack()->hitPattern().numberOfValidMuonHits();
+	pAddJet->PFMuon_nTkHit   = muonPtr->innerTrack()->hitPattern().numberOfValidHits();
+	pAddJet->PFMuon_nPixHit  = muonPtr->innerTrack()->hitPattern().numberOfValidPixelHits();
+	pAddJet->PFMuon_nOutHit  = muonPtr->innerTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_OUTER_HITS);
+	pAddJet->PFMuon_nTkLwM   = muonPtr->innerTrack()->hitPattern().trackerLayersWithMeasurement();
+	pAddJet->PFMuon_nPixLwM  = muonPtr->innerTrack()->hitPattern().pixelLayersWithMeasurement();
+	pAddJet->PFMuon_nMatched = muonPtr->numberOfMatchedStations();
+	pAddJet->PFMuon_chi2     = muonPtr->globalTrack()->normalizedChi2();
+	pAddJet->PFMuon_chi2Tk   = muonPtr->innerTrack()->normalizedChi2();
+	pAddJet->PFMuon_isGlobal = 1;
+	pAddJet->PFMuon_dz       = muonPtr->muonBestTrack()->dz(pv->position());
+      }
     }
-    pAddJet->nSM = softPFMuonTagInfoCollection[lepIndex].leptons().size();
+    */
+    pAddJet->nSM = nSM;
   }
   // PFElectron
   for (std::size_t lepIndex = 0; lepIndex < softPFElectronTagInfoCollection.size(); ++lepIndex) {
+    float nSE = 0;
     for (size_t PFele = 0; PFele < (size_t)softPFElectronTagInfoCollection[lepIndex].leptons(); ++PFele) {
-      pAddJet->PFElectron_pt       = softPFElectronTagInfoCollection[lepIndex].lepton(PFele).pt();
-      pAddJet->PFElectron_eta      = softPFElectronTagInfoCollection[lepIndex].lepton(PFele).eta();
-      pAddJet->PFElectron_phi      = softPFElectronTagInfoCollection[lepIndex].lepton(PFele).phi();
-      pAddJet->PFElectron_ptrel    = softPFElectronTagInfoCollection[lepIndex].properties(PFele).ptRel;
+      pAddJet->PFElectron_pt       = softPFElectronTagInfoCollection[lepIndex].lepton(PFele)->pt();
+      pAddJet->PFElectron_eta      = softPFElectronTagInfoCollection[lepIndex].lepton(PFele)->eta();
+      pAddJet->PFElectron_phi      = softPFElectronTagInfoCollection[lepIndex].lepton(PFele)->phi();
+      pAddJet->PFElectron_ptRel    = softPFElectronTagInfoCollection[lepIndex].properties(PFele).ptRel;
       pAddJet->PFElectron_ratio    = softPFElectronTagInfoCollection[lepIndex].properties(PFele).ratio;
       pAddJet->PFElectron_ratioRel = softPFElectronTagInfoCollection[lepIndex].properties(PFele).ratioRel;
       pAddJet->PFElectron_deltaR   = softPFElectronTagInfoCollection[lepIndex].properties(PFele).deltaR;
       pAddJet->PFElectron_IP       = softPFElectronTagInfoCollection[lepIndex].properties(PFele).sip3d;
       pAddJet->PFElectron_IP2D     = softPFElectronTagInfoCollection[lepIndex].properties(PFele).sip2d;
+      nSE ++;
     }
-    pAddJet->nSE = softPFElectronTagInfoCollection[lepIndex].leptons().size();
+    pAddJet->nSE = nSE;
   }
-  */
 }
 
 void FillerJet::addJet(baconhep::TAddJet *pAddJet, const edm::Event &iEvent, const pat::Jet &itJet)
@@ -1637,26 +1974,13 @@ const reco::GenJet* FillerJet::match(const pat::Jet *iJet, const reco::GenJetCol
   return lJet;
 }
 /*
-const edm::Ptr<reco::Muon>* FillerJet::match(const edm::Ptr<reco::Candidate> *iMuon, const edm::View<reco::Muon>& muons){
-  const pat::PackedCandidate * pcand = dynamic_cast<const pat::PackedCandidate *>(theMuon.get());
-  if(pcand) // MiniAOD case
-    {
-      for(edm::View<reco::Muon>::const_iterator muon = muons.begin(); muon != muons.end(); ++muon )
-	{
-	  const pat::Muon * patmuon = dynamic_cast<const pat::Muon *>(&(*muon));
-	  if(patmuon)
-	    {
-	      if(patmuon->originalObjectRef()==theMuon)
-		return muons.ptrAt(muon - muons.begin());
-	    }
-	}
-      return edm::Ptr<reco::Muon>();
+const reco::Muon* FillerJet::match(const pat::Muon *iMuon, const reco::MuonCollection *muons) {
+  for ( unsigned int i=0; i< muons->size(); ++i ) {
+    const reco::GenJet *muon = &(*muons)[i];
+    if(iMuon->originalObjectRef()==muon){
+      return muons.ptrAt(muon - muons.begin());
     }
-  else
-    {
-      const reco::PFCandidate * pfcand = dynamic_cast<const reco::PFCandidate *>(theMuon.get());
-      return edm::refToPtr( pfcand->muonRef() );
-    }
+  return reco::Muon();
 }
 */
 //--------------------------------------------------------------------------------------------------

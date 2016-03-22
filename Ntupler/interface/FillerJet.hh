@@ -7,6 +7,7 @@
 #include "BaconAna/DataFormats/interface/TAddJet.hh"
 #include "DataFormats/BTauReco/interface/BaseTagInfo.h"
 #include "DataFormats/BTauReco/interface/SecondaryVertexTagInfo.h"
+#include "DataFormats/BTauReco/interface/CandSoftLeptonTagInfo.h"
 #include "DataFormats/JetReco/interface/PFJet.h"
 #include "DataFormats/JetReco/interface/BasicJet.h"
 #include "DataFormats/JetReco/interface/JetCollection.h"
@@ -79,6 +80,7 @@ namespace baconhep
       const reco::BasicJet* match(const pat::Jet *iJet,   const reco::BasicJetCollection *jets);
       const reco::GenJet*   match(const reco::PFJet *jet, const reco::GenJetCollection *jets);
       const reco::GenJet*   match(const pat::Jet *iJet,   const reco::GenJetCollection *jets);
+    //const reco::Muon*     match(const pat::Muon *iMuon, const reco::MuonCollection *muons);
 
       void setTracksPVBase(const reco::TrackRef & trackRef, const reco::VertexRef & vertexRef, float & PVweight) const;
       void setTracksPV(const reco::CandidatePtr & trackRef, const reco::VertexRef & vertexRef, float & PVweight) const;
@@ -95,6 +97,8 @@ namespace baconhep
       bool fApplyJEC;
       
       // EDM object collection names
+      //std::string fMuonName;
+      //std::string fPFCandName;
       std::string fPVName;
       std::string fRhoName;
       std::string fJetName;
@@ -104,14 +108,17 @@ namespace baconhep
       std::string fTrimmedJetName;
       std::string fSoftDropJetName;
       std::string fSubJetName;
+      std::string fCVLctagName;
+      std::string fCVBctagName;
+      std::string fMVAbtagName;
       std::string fCSVbtagName;
       std::string fCSVbtagSubJetName;
       std::string fCSVDoubleBtagName;
       std::string fJettinessName;
       std::string fIPTagInfos; 
       std::string fSVTagInfos;
-    // std::string fsoftPFMuonTagInfos;
-    // std::string fsoftPFElectronTagInfos;
+      std::string fsoftPFMuonTagInfos;
+      std::string fsoftPFElectronTagInfos;
       std::string fQGLikelihood;
       std::string fQGLikelihoodSubJets;
       std::string fTopTaggerName;
@@ -133,12 +140,18 @@ namespace baconhep
       JetCorrectionUncertainty *fJetUnc;
 
       bool fUseAOD;
+    //edm::EDGetTokenT<reco::MuonCollection>         fTokMuonName;
+    //edm::EDGetTokenT<pat::MuonCollection>          fTokPatMuonName;
+    edm::EDGetTokenT<reco::PFCandidateCollection>  fTokPFCandName;
     edm::EDGetTokenT<reco::PFJetCollection>  fTokJetName;
     edm::EDGetTokenT<pat::JetCollection>     fTokPatJetName;
     edm::EDGetTokenT<reco::GenJetCollection> fTokGenJetName;
     edm::EDGetTokenT<reco::JetFlavourInfoMatchingCollection> fTokJetFlavorName;
     edm::EDGetTokenT<reco::VertexCollection> fTokPVName;
     edm::EDGetTokenT<reco::JetTagCollection> fTokCSVbtagName;
+    edm::EDGetTokenT<reco::JetTagCollection> fTokMVAbtagName;
+    edm::EDGetTokenT<reco::JetTagCollection> fTokCVBctagName;
+    edm::EDGetTokenT<reco::JetTagCollection> fTokCVLctagName;
     edm::EDGetTokenT<reco::BasicJetCollection> fTokPrunedJetName;
     edm::EDGetTokenT<reco::BasicJetCollection> fTokTrimmedJetName;
     edm::EDGetTokenT<reco::BasicJetCollection> fTokSoftDropJetName;
